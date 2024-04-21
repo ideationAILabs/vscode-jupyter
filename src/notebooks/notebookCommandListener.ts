@@ -7,15 +7,17 @@ import {
     ConfigurationTarget,
     NotebookCellData,
     NotebookCellKind,
+    NotebookDocument,
     NotebookEdit,
     NotebookRange,
     Uri,
+    WorkspaceEdit,
     commands,
     window,
     workspace
 } from 'vscode';
 import { IConfigurationService, IDataScienceCommandListener, IDisposableRegistry } from '../platform/common/types';
-import { Commands } from '../platform/common/constants';
+import { Commands, JVSC_EXTENSION_ID } from '../platform/common/constants';
 import { noop } from '../platform/common/utils/misc';
 import { NotebookCellLanguageService } from './languages/cellLanguageService';
 import { DisplayOptions } from '../kernels/displayOptions';
@@ -31,6 +33,7 @@ import { IDataScienceErrorHandler } from '../kernels/errors/types';
 import { getNotebookMetadata } from '../platform/common/utils';
 import { KernelConnector } from './controllers/kernelConnector';
 import { IControllerRegistration } from './controllers/types';
+import { ServiceContainer } from '../platform/ioc/container';
 
 /**
  * Registers commands specific to the notebook UI
@@ -47,7 +50,7 @@ export class NotebookCommandListener implements IDataScienceCommandListener {
         @inject(IDataScienceErrorHandler) private errorHandler: IDataScienceErrorHandler,
         @inject(INotebookEditorProvider) private notebookEditorProvider: INotebookEditorProvider,
         @inject(IServiceContainer) private serviceContainer: IServiceContainer
-    ) {}
+    ) { }
 
     public register(): void {
         this.disposableRegistry.push(
@@ -64,6 +67,173 @@ export class NotebookCommandListener implements IDataScienceCommandListener {
             commands.registerCommand(Commands.RestartKernelAndRunUpToSelectedCell, () =>
                 this.restartKernelAndRunUpToSelectedCell()
             )
+        );
+
+        this.disposableRegistry.push(
+            commands.registerCommand(Commands.AiInsertCellAbove, async (uri, num, kind, content) => {
+                const notebook = await this.aiGetNotebook(uri);
+                num = parseInt(num);
+                if (this.aiCheckConditions(notebook, num)) {
+                    const defaultLanguage = this.languageService.getPreferredLanguage(getNotebookMetadata(notebook));
+
+                    const edit = new WorkspaceEdit();
+                    const nbEdit = NotebookEdit.insertCells(num, [
+                        new NotebookCellData(kind == 2 ? NotebookCellKind.Code : NotebookCellKind.Markup,
+                            content,
+                            defaultLanguage)
+                    ]);
+
+                    edit.set(notebook.uri, [nbEdit]);
+                    return workspace.applyEdit(edit);
+                }
+                return false;
+            })
+        );
+
+        this.disposableRegistry.push(
+            commands.registerCommand(Commands.AiInsertCellBelow, async (uri, num, kind, content) => {
+                const notebook = await this.aiGetNotebook(uri);
+                num = parseInt(num);
+                if (this.aiCheckConditions(notebook, num)) {
+                    const defaultLanguage = this.languageService.getPreferredLanguage(getNotebookMetadata(notebook));
+                    const edit = new WorkspaceEdit();
+                    const nbEdit = NotebookEdit.insertCells(num + 1, [
+                        new NotebookCellData(kind == 2 ? NotebookCellKind.Code : NotebookCellKind.Markup,
+                            content,
+                            defaultLanguage)
+                    ]);
+
+                    edit.set(notebook.uri, [nbEdit]);
+                    return workspace.applyEdit(edit);
+                }
+                return false;
+            })
+        );
+
+        this.disposableRegistry.push(
+            commands.registerCommand(Commands.AiGetCell, async (uri, num) => {
+                const notebook = await this.aiGetNotebook(uri);
+                num = parseInt(num);
+                if (this.aiCheckConditions(notebook, num)) {
+                    return notebook?.cellAt(num)?.document?.getText();
+                }
+                return false;
+            })
+        );
+
+        this.disposableRegistry.push(
+            commands.registerCommand(Commands.AiGetCellOutput, async (uri, num) => {
+                const notebook = await this.aiGetNotebook(uri);
+                num = parseInt(num);
+                if (this.aiCheckConditions(notebook, num)) {
+                    const output = notebook?.cellAt(num)?.outputs?.[0]?.items?.[0]?.data;
+                    if (!output) {
+                        return false;
+                    }
+                    return (new TextDecoder().decode(output));
+                }
+                return false;
+            })
+        );
+
+        this.disposableRegistry.push(
+            commands.registerCommand(Commands.AiGetCellType, async (uri, num) => {
+                const notebook = await this.aiGetNotebook(uri);
+                num = parseInt(num);
+                if (this.aiCheckConditions(notebook, num)) {
+                    return notebook?.cellAt(num)?.kind || false;
+                }
+                return false;
+            })
+        );
+
+        this.disposableRegistry.push(
+            commands.registerCommand(Commands.AiUpdateCell, async (uri, num, kind, content) => {
+                const notebook = await this.aiGetNotebook(uri);
+                num = parseInt(num);
+                if (this.aiCheckConditions(notebook, num)) {
+                    const defaultLanguage = this.languageService.getPreferredLanguage(getNotebookMetadata(notebook));
+
+                    const edit = new WorkspaceEdit();
+                    const nbEdit = NotebookEdit.replaceCells(new NotebookRange(num, num + 1), [
+                        new NotebookCellData(kind == 2 ? NotebookCellKind.Code : NotebookCellKind.Markup,
+                            content,
+                            defaultLanguage)
+                    ]);
+
+                    edit.set(notebook.uri, [nbEdit]);
+                    return workspace.applyEdit(edit);
+                }
+                return false;
+            })
+        );
+
+        this.disposableRegistry.push(
+            commands.registerCommand(Commands.AiDeleteCell, async (uri, num) => {
+                const notebook = await this.aiGetNotebook(uri);
+                num = parseInt(num);
+                if (this.aiCheckConditions(notebook, num)) {
+                    const edit = new WorkspaceEdit();
+                    const nbEdit = NotebookEdit.deleteCells(new NotebookRange(num, num + 1));
+                    edit.set(notebook.uri, [nbEdit]);
+                    return workspace.applyEdit(edit);
+                }
+                return false;
+            })
+        );
+
+        this.disposableRegistry.push(
+            commands.registerCommand(Commands.AiRunCell, async (uri, num) => {
+                const notebook = await this.aiGetNotebook(uri);
+                num = parseInt(num);
+                if (this.aiCheckConditions(notebook, num)) {
+                    return commands.executeCommand(
+                        'notebook.cell.execute',
+                        { start: num, end: num + 1 },
+                        notebook.uri
+                    );
+                }
+                return false;
+            })
+        );
+
+        this.disposableRegistry.push(
+            commands.registerCommand(Commands.AiGetAllKernel, () => {
+                const controllers = ServiceContainer.instance.get<IControllerRegistration>(IControllerRegistration);
+                return controllers.all;
+            })
+        );
+
+        this.disposableRegistry.push(
+            commands.registerCommand(Commands.AiGetKernel, (id) => {
+                const controllers = ServiceContainer.instance.get<IControllerRegistration>(IControllerRegistration);
+                const filtered = controllers.all.filter(controller => controller.id == id);
+                return filtered?.[0] || false;
+            })
+        );
+
+        this.disposableRegistry.push(
+            commands.registerCommand(Commands.AiSelectKernel, async (id) => {
+                return await commands.executeCommand('notebook.selectKernel', {
+                    id: id,
+                    extension: JVSC_EXTENSION_ID
+                });
+            })
+        );
+
+        this.disposableRegistry.push(
+            commands.registerCommand(Commands.AiRestartKernel, async (uri) => {
+                const notebook = await this.aiGetNotebook(uri);
+
+                return this.aiRestartKernel(notebook.uri).catch(noop);
+            })
+        );
+
+        this.disposableRegistry.push(
+            commands.registerCommand(Commands.AiInterruptKernel, async (uri) => {
+                const notebook = await this.aiGetNotebook(uri);
+                return this.interruptKernel(notebook.uri);
+            })
         );
 
         this.disposableRegistry.push(
@@ -95,6 +265,16 @@ export class NotebookCommandListener implements IDataScienceCommandListener {
                 }
             )
         );
+    }
+    private async aiGetNotebook(uri: Uri): Promise<NotebookDocument> {
+        if (!uri) {
+            return window.visibleNotebookEditors?.[0]?.notebook;
+        }
+        return workspace.openNotebookDocument(uri);
+    }
+
+    private aiCheckConditions(notebook: NotebookDocument, num: number) {
+        return notebook && num > 0 && num < notebook?.cellCount;
     }
 
     private runAllCells() {
@@ -155,6 +335,22 @@ export class NotebookCommandListener implements IDataScienceCommandListener {
                     document: activeNBE.notebook.uri
                 })
                 .then(noop, noop);
+        }
+    }
+
+    private async aiRestartKernel(notebookUri: Uri | undefined): Promise<void> {
+        const uri = notebookUri ?? this.notebookEditorProvider.activeNotebookEditor?.notebook.uri;
+        const document = workspace.notebookDocuments.find((document) => document.uri.toString() === uri?.toString());
+
+        if (document === undefined) {
+            return;
+        }
+
+        const kernel = this.kernelProvider.get(document);
+
+        if (kernel) {
+            traceVerbose(`AI restart kernel command handler for ${getDisplayPath(document.uri)}`);
+            this.wrapKernelMethod('restart', kernel).catch(noop);
         }
     }
 

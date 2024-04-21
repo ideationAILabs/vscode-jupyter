@@ -164,6 +164,19 @@ export enum CommandSource {
 }
 
 export namespace Commands {
+    export const AiInsertCellAbove = 'ai.jupyter.insertcell.above';
+    export const AiInsertCellBelow = 'ai.jupyter.insertcell.below';
+    export const AiGetCell = 'ai.jupyter.getcell';
+    export const AiUpdateCell = 'ai.jupyter.updatecell';
+    export const AiDeleteCell = 'ai.jupyter.deletecell';
+    export const AiRunCell = 'ai.jupyter.runcell';
+    export const AiGetCellOutput = 'ai.jupyter.outputcell';
+    export const AiGetCellType = 'ai.jupyter.celltype';
+    export const AiGetAllKernel = 'ai.jupyter.kernel.all';
+    export const AiGetKernel = 'ai.jupyter.kernel.get';
+    export const AiSelectKernel = 'ai.jupyter.kernel.select';
+    export const AiRestartKernel = 'ai.jupyter.kernel.restart';
+    export const AiInterruptKernel = 'ai.jupyter.kernel.interrupt';
     export const RunAllCells = 'jupyter.runallcells';
     export const RunAllCellsAbove = 'jupyter.runallcellsabove';
     export const RunCellAndAllBelow = 'jupyter.runcellandallbelow';

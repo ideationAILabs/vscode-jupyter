@@ -98,8 +98,8 @@ export interface ICommandNameArgumentTypeMapping {
     ['notebook.execute']: [];
     ['notebook.cell.edit']: [];
     ['notebook.cell.execute']:
-        | []
-        | [{ ranges: { start: number; end: number }[]; document?: Uri; autoReveal?: boolean }]; // TODO update this
+    | []
+    | [{ ranges: { start: number; end: number }[]; document?: Uri; autoReveal?: boolean }]; // TODO update this
     ['notebook.cell.insertCodeCellBelow']: [];
     ['notebook.undo']: [];
     ['notebook.redo']: [];
@@ -108,15 +108,15 @@ export interface ICommandNameArgumentTypeMapping {
     ['workbench.action.files.saveAs']: [Uri];
     ['workbench.action.files.save']: [Uri];
     ['notebook.selectKernel']:
-        | [
-              // This set of args will set the kernel/controller to the one with the id provided.
-              | { id: string; extension: string }
-              // This set of args will display the kernel picker.
-              | { notebookEditor: NotebookEditor }
-              // Open a specific notebook with a specific kernel.
-              | { notebookEditor: NotebookEditor; id: string; extension: string }
-          ]
-        | [];
+    | [
+        // This set of args will set the kernel/controller to the one with the id provided.
+        | { id: string; extension: string }
+        // This set of args will display the kernel picker.
+        | { notebookEditor: NotebookEditor }
+        // Open a specific notebook with a specific kernel.
+        | { notebookEditor: NotebookEditor; id: string; extension: string }
+    ]
+    | [];
     ['undo']: [];
     ['interactive.open']: [
         { preserveFocus?: boolean; viewColumn?: ViewColumn },
@@ -135,6 +135,19 @@ export interface ICommandNameArgumentTypeMapping {
     ];
     [DSCommands.ExportFileAndOutputAsNotebook]: [Uri];
     [DSCommands.RunAllCells]: [Uri];
+    [DSCommands.AiInsertCellAbove]: [undefined | Uri, number, number, string];
+    [DSCommands.AiInsertCellBelow]: [undefined | Uri, number, number, string];
+    [DSCommands.AiGetCell]: [undefined | Uri, number];
+    [DSCommands.AiUpdateCell]: [undefined | Uri, number, number, string];
+    [DSCommands.AiDeleteCell]: [undefined | Uri, number];
+    [DSCommands.AiRunCell]: [undefined | Uri, number];
+    [DSCommands.AiGetCellType]: [undefined | Uri, number];
+    [DSCommands.AiGetCellOutput]: [undefined | Uri, number];
+    [DSCommands.AiGetAllKernel]: [];
+    [DSCommands.AiGetKernel]: [string];
+    [DSCommands.AiSelectKernel]: [string];
+    [DSCommands.AiRestartKernel]: [undefined | Uri];
+    [DSCommands.AiInterruptKernel]: [undefined | Uri];
     [DSCommands.RunCell]: [Uri, number, number, number, number];
     [DSCommands.RunAllCellsAbove]: [Uri, number, number];
     [DSCommands.RunCellAndAllBelow]: [Uri, number, number];
